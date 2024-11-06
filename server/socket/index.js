@@ -13,13 +13,13 @@ const server = http.createServer(app)
 const io = new Server(server,{
     cors : {
         origin : process.env.FRONTEND_URL,
+        methods: ["GET", "POST"],
+        allowedHeaders: ["Content-Type"],
         credentials : true
     }
 })
 
-/***
- * socket running at http://localhost:8080/
- */
+
 
 //online user
 const onlineUser = new Set()
@@ -29,8 +29,23 @@ io.on('connection',async(socket)=>{
 
     const token = socket.handshake.auth.token 
 
-    //current user details 
-    const user = await getUserDetailsFromToken(token)
+    // //current user details 
+    // const user = await getUserDetailsFromToken(token)
+    let user;
+
+    try {
+        user = await getUserDetailsFromToken(token);
+        if (!user) {
+            socket.emit('connect_error', 'Invalid token');
+            socket.disconnect();
+            return;
+        }
+    } catch (error) {
+        console.error('Token validation error:', error);
+        socket.emit('connect_error', 'Token validation failed');
+        socket.disconnect();
+        return;
+    }
 
     //create a room
     socket.join(user?._id.toString())
